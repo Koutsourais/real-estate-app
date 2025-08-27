@@ -1,9 +1,9 @@
+// src/components/TopBar.tsx
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFilters } from "@/context/FiltersContext";
 import Link from "next/link";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 type SuggestItem = {
   id: number;
@@ -19,62 +19,68 @@ type SuggestItem = {
 export default function TopBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { clearFilters } = useFilters();
 
-  // controlled inputs
+  // ---- Local UI state
   const [region, setRegion] = useState("");
-  const [sort, setSort] = useState("date-desc");
+  const [sort, setSort] = useState("date-desc"); // price-asc|price-desc|area-asc|area-desc|date-desc
+  const [view, setView] = useState<"list" | "grid">("list");
 
-  // live suggestions
-  const [q, setQ] = useState(""); // what user types
+  // ---- Suggestions (by region)
   const [suggestions, setSuggestions] = useState<SuggestItem[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  // sync από URL
+  // ---- Sync URL -> UI
   useEffect(() => {
     const urlRegion = searchParams?.get("region") || "";
     setRegion(urlRegion);
-    setQ(urlRegion);
-    const orderby = searchParams?.get("orderby") || "date";
-    const order = (searchParams?.get("order") || "desc").toLowerCase();
-    setSort(`${orderby}-${order}`);
+
+    const urlSort = searchParams?.get("sort") || "date-desc";
+    setSort(urlSort);
+
+    const urlView = (searchParams?.get("view") as "list" | "grid") || "list";
+    setView(urlView);
   }, [searchParams]);
 
-  // helper: update URL param + reset στη σελίδα 1
-  const updateFilter = useCallback(
-    (name: string, value: string | null) => {
+  // ---- Helper: set a single query param (and reset page)
+  const setParam = useCallback(
+    (name: string, value?: string | null) => {
       const params = new URLSearchParams(searchParams?.toString());
       if (value && value !== "") params.set(name, value);
       else params.delete(name);
+      // sort is canonical → καθάρισε legacy order/orderby
+      if (name === "sort") {
+        params.delete("order");
+        params.delete("orderby");
+      }
       params.delete("page");
       router.push(`/?${params.toString()}`);
     },
     [router, searchParams]
   );
 
-  // clear όλα (και sidebar μέσω context)
+  // ---- Clear all
   const handleClear = () => {
     setRegion("");
-    setQ("");
     setSort("date-desc");
+    setView("list");
     setSuggestions([]);
     setOpen(false);
-    clearFilters(); // καθαρίζει και URL + sidebar
+    router.push("/"); // καθαρό URL
   };
 
-  // debounce helper
-  const debounce = (fn: (...args: any[]) => void, ms = 400) => {
+  // ---- Debounce util
+  function debounce<T extends (...args: any[]) => void>(fn: T, ms = 350) {
     let t: any;
-    return (...args: any[]) => {
+    return (...args: Parameters<T>) => {
       clearTimeout(t);
       t = setTimeout(() => fn(...args), ms);
     };
-  };
+  }
 
+  // ---- Live suggestions for region
   const fetchSuggestions = useMemo(
     () =>
       debounce(async (term: string) => {
@@ -96,18 +102,17 @@ export default function TopBar() {
         } finally {
           setLoading(false);
         }
-      }, 400),
+      }, 350),
     []
   );
 
-  // τρέχει σε κάθε αλλαγή q
   useEffect(() => {
     setLoading(true);
-    fetchSuggestions(q);
-    setOpen(!!q && q.trim().length >= 2);
-  }, [q, fetchSuggestions]);
+    fetchSuggestions(region);
+    setOpen(!!region && region.trim().length >= 2);
+  }, [region, fetchSuggestions]);
 
-  // κλείσιμο dropdown όταν πατάς έξω
+  // close dropdown when clicking outside
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (
@@ -124,143 +129,137 @@ export default function TopBar() {
   }, []);
 
   return (
-    <div className="sticky top-16 z-40">
-      <div className="ui-card p-4">
-        <div className="flex flex-col md:flex-row md:items-center md:gap-4 gap-3">
-          {/* Καθαρισμός */}
-          <button
-            className="btn btn-ghost min-w-[140px]"
-            onClick={handleClear}
-            aria-label="Καθαρισμός φίλτρων"
-            title="Καθαρισμός φίλτρων"
+    <div className="sticky top-16 z-40 bg-white border rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+      {/* Καθαρισμός */}
+      <button
+        type="button"
+        className="border px-4 py-2 rounded text-sm hover:bg-gray-100"
+        onClick={handleClear}
+      >
+        Καθαρισμός
+      </button>
+
+      {/* Περιοχή με προτάσεις */}
+      <div className="relative flex-1 max-w-xl">
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Περιοχή (π.χ. Αθήνα, Πλάκα)…"
+          className="input w-full"
+          value={region}
+          onChange={(e) => {
+            const v = e.target.value;
+            setRegion(v);
+            setParam("region", v || null); // apply immediately
+          }}
+          onFocus={() => {
+            if (region && region.trim().length >= 2) setOpen(true);
+          }}
+        />
+
+        {open && (
+          <div
+            ref={dropdownRef}
+            className="absolute left-0 right-0 mt-2 bg-white border rounded-lg shadow-lg max-h-96 overflow-auto"
           >
-            Καθαρισμός
-          </button>
-
-          {/* Αναζήτηση περιοχής + dropdown */}
-          <div className="relative flex-1 max-w-2xl">
-            <div className="relative">
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder="Αναζήτηση περιοχής…"
-                className="input pr-10"
-                value={q}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setQ(v);
-                  setRegion(v);
-                  // εφαρμόζουμε άμεσα το φίλτρο (SSR refresh)
-                  updateFilter("region", v);
-                }}
-                onFocus={() => {
-                  if (q && q.trim().length >= 2) setOpen(true);
-                }}
-              />
-              {/* μικρό εικονίδιο αναζήτησης */}
-              <svg
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-secondary-dark/60"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M21 21l-4.35-4.35m1.35-5.15a6.5 6.5 0 11-13.001.001A6.5 6.5 0 0118 11.5z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-
-            {/* Dropdown results */}
-            {open && (
-              <div
-                ref={dropdownRef}
-                className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-card max-h-96 overflow-auto"
-              >
-                {loading && (
-                  <div className="p-3 text-sm text-secondary-dark">Αναζήτηση…</div>
-                )}
-                {!loading && suggestions.length === 0 && (
-                  <div className="p-3 text-sm text-secondary-dark">Δεν βρέθηκαν αποτελέσματα</div>
-                )}
-
-                {!loading &&
-                  suggestions.map((it) => {
-                    const title = it?.title?.rendered || "Χωρίς τίτλο";
-                    const reg = it?.acf?.region || "";
-                    const price =
-                      it?.acf?.price !== undefined && it?.acf?.price !== ""
-                        ? Number(String(it.acf!.price).replace(/[^\d.]/g, "")).toLocaleString("el-GR")
-                        : null;
-
-                    return (
-                      <Link
-                        key={it.id}
-                        href={`/real-estate/${encodeURIComponent(it.slug)}`}
-                        className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
-                        onClick={() => setOpen(false)}
-                      >
-                        {/* Προαιρετικά thumbnail:
-                        {it.acf?.image?.url && (
-                          <img
-                            src={it.acf.image.url}
-                            alt={it.acf.image.alt || title}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                        )} */}
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">{title}</div>
-                          <div className="text-xs text-secondary-dark truncate">
-                            {reg} {price ? `• ${price} €` : ""}
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-
-                {/* Προβολή όλων με το τρέχον query */}
-                {!loading && suggestions.length > 0 && (
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-blue-50 border-t border-gray-100"
-                    onClick={() => {
-                      // ήδη ενημερώνουμε το region στο URL με onChange – εδώ απλά κλείνουμε το dropdown
-                      setOpen(false);
-                    }}
-                  >
-                    Προβολή όλων αποτελεσμάτων για “{q}”
-                  </button>
-                )}
+            {loading && (
+              <div className="p-3 text-sm text-gray-500">Αναζήτηση…</div>
+            )}
+            {!loading && suggestions.length === 0 && (
+              <div className="p-3 text-sm text-gray-500">
+                Δεν βρέθηκαν αποτελέσματα
               </div>
             )}
-          </div>
 
-          {/* Ταξινόμηση */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="sort" className="text-sm text-secondary-dark">
-              Ταξινόμηση:
-            </label>
-            <select
-              id="sort"
-              className="input py-2"
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value);
-                const [orderby, order] = e.target.value.split("-");
-                updateFilter("orderby", orderby);
-                updateFilter("order", order.toUpperCase());
-              }}
-            >
-              <option value="price-asc">Τιμή ↑</option>
-              <option value="price-desc">Τιμή ↓</option>
-              <option value="area-asc">Εμβαδόν ↑</option>
-              <option value="area-desc">Εμβαδόν ↓</option>
-            </select>
+            {!loading &&
+              suggestions.map((it) => {
+                const title = it?.title?.rendered || "Χωρίς τίτλο";
+                const reg = it?.acf?.region || "";
+                const price =
+                  it?.acf?.price !== undefined && it?.acf?.price !== ""
+                    ? Number(
+                        String(it.acf!.price).replace(/[^\d.]/g, "")
+                      ).toLocaleString("el-GR")
+                    : null;
+
+                return (
+                  <Link
+                    key={it.id}
+                    href={`/real-estate/${encodeURIComponent(it.slug)}`}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50"
+                    onClick={() => setOpen(false)}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {title}
+                      </div>
+                      <div className="text-xs text-gray-600 truncate">
+                        {reg} {price ? `• ${price} €` : ""}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+
+            {!loading && suggestions.length > 0 && (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 border-t"
+                onClick={() => setOpen(false)}
+              >
+                Προβολή όλων αποτελεσμάτων για “{region}”
+              </button>
+            )}
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Εναλλαγή προβολής: List / Grid */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={view === "list"}
+          className={`px-3 py-2 rounded border text-sm ${
+            view === "list" ? "bg-blue-600 text-white border-blue-600" : "hover:bg-gray-100"
+          }`}
+          onClick={() => {
+            setView("list");
+            setParam("view", "list");
+          }}
+        >
+          Λίστα
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "grid"}
+          className={`px-3 py-2 rounded border text-sm ${
+            view === "grid" ? "bg-blue-600 text-white border-blue-600" : "hover:bg-gray-100"
+          }`}
+          onClick={() => {
+            setView("grid");
+            setParam("view", "grid");
+          }}
+        >
+          Grid
+        </button>
+      </div>
+
+      {/* Ταξινόμηση (συμβατό με plugin: ?sort=...) */}
+      <select
+        className="select text-sm"
+        value={sort}
+        onChange={(e) => {
+          const val = e.target.value;
+          setSort(val);
+          setParam("sort", val);
+        }}
+      >
+        <option value="date-desc">Νεότερα</option>
+        <option value="price-asc">Τιμή ↑</option>
+        <option value="price-desc">Τιμή ↓</option>
+        <option value="area-asc">Εμβαδόν ↑</option>
+        <option value="area-desc">Εμβαδόν ↓</option>
+      </select>
     </div>
   );
 }

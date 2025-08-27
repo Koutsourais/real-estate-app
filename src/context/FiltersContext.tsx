@@ -1,33 +1,43 @@
+// src/context/FiltersContext.tsx
 "use client";
-import { createContext, useContext, useState, ReactNode } from "react";
+
+import React, { createContext, useContext, useState, useCallback } from "react";
 
 type Filters = Record<string, string>;
 
-type FiltersContextType = {
+type Ctx = {
   filters: Filters;
-  setFilters: (f: Filters) => void;
-  clearFilters: () => void;
+  setFilters: (updater: Filters | ((prev: Filters) => Filters)) => void;
+  clearAll: () => void;
 };
 
-const FiltersContext = createContext<FiltersContextType | undefined>(undefined);
+const FiltersContext = createContext<Ctx>({
+  filters: {},
+  setFilters: () => {},
+  clearAll: () => {},
+});
 
-export function FiltersProvider({ children }: { children: ReactNode }) {
-  const [filters, setFiltersState] = useState<Filters>({});
+export function FiltersProvider({ children }: { children: React.ReactNode }) {
+  const [filters, _setFilters] = useState<Filters>({});
 
-  const setFilters = (f: Filters) => setFiltersState(f);
-  const clearFilters = () => setFiltersState({});
+  const setFilters = useCallback(
+    (updater: Filters | ((prev: Filters) => Filters)) => {
+      _setFilters((prev) =>
+        typeof updater === "function" ? (updater as any)(prev) : updater
+      );
+    },
+    []
+  );
+
+  const clearAll = useCallback(() => {
+    _setFilters({});
+  }, []);
 
   return (
-    <FiltersContext.Provider value={{ filters, setFilters, clearFilters }}>
+    <FiltersContext.Provider value={{ filters, setFilters, clearAll }}>
       {children}
     </FiltersContext.Provider>
   );
 }
 
-export function useFilters() {
-  const ctx = useContext(FiltersContext);
-  if (!ctx) {
-    throw new Error("useFilters must be used inside <FiltersProvider>");
-  }
-  return ctx;
-}
+export const useFilters = () => useContext(FiltersContext);

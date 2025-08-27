@@ -1,3 +1,4 @@
+// src/components/FiltersSidebar.tsx
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,10 +10,7 @@ export default function FiltersSidebar() {
   const searchParams = useSearchParams();
   const { filters, setFilters } = useFilters();
 
-  // Αν filters είναι undefined -> fallback σε κενό object
-  const safeFilters = filters || {};
-
-  // Συγχρονισμός με το URL
+  // κράτα context sync με URL
   useEffect(() => {
     const obj: Record<string, string> = {};
     searchParams?.forEach((v, k) => (obj[k] = v));
@@ -23,32 +21,30 @@ export default function FiltersSidebar() {
     const params = new URLSearchParams(searchParams?.toString());
     if (value && value !== "") params.set(name, value);
     else params.delete(name);
-    params.delete("page"); // reset σελίδας
+    params.delete("page");
     router.push(`/?${params.toString()}`);
   };
 
   return (
     <aside className="ui-card p-5 space-y-6 sticky top-28">
-      <h2 className="text-lg font-semibold text-secondary-dark">Φίλτρα</h2>
+      <h2 className="text-lg font-semibold text-gray-800">Φίλτρα</h2>
 
       {/* Τιμή */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Τιμή (€)
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Τιμή (€)</label>
         <div className="flex gap-2">
           <input
             type="number"
             placeholder="Από"
             className="input"
-            value={safeFilters.minPrice || ""}
+            value={filters.minPrice || ""}
             onChange={(e) => updateFilter("minPrice", e.target.value)}
           />
           <input
             type="number"
             placeholder="Έως"
             className="input"
-            value={safeFilters.maxPrice || ""}
+            value={filters.maxPrice || ""}
             onChange={(e) => updateFilter("maxPrice", e.target.value)}
           />
         </div>
@@ -56,22 +52,20 @@ export default function FiltersSidebar() {
 
       {/* Εμβαδόν */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Εμβαδόν (m²)
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Εμβαδόν (m²)</label>
         <div className="flex gap-2">
           <input
             type="number"
             placeholder="Από"
             className="input"
-            value={safeFilters.minArea || ""}
+            value={filters.minArea || ""}
             onChange={(e) => updateFilter("minArea", e.target.value)}
           />
           <input
             type="number"
             placeholder="Έως"
             className="input"
-            value={safeFilters.maxArea || ""}
+            value={filters.maxArea || ""}
             onChange={(e) => updateFilter("maxArea", e.target.value)}
           />
         </div>
@@ -79,14 +73,12 @@ export default function FiltersSidebar() {
 
       {/* Τύπος Ακινήτου */}
       <div>
-        <span className="block text-sm font-medium text-gray-700 mb-2">
-          Τύπος Ακινήτου
-        </span>
+        <span className="block text-sm font-medium text-gray-700 mb-2">Τύπος Ακινήτου</span>
         {["House", "Apartment", "Warehouse", "Plot"].map((t) => (
           <label key={t} className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              checked={safeFilters.real_estate_type === t}
+              checked={filters.real_estate_type === t}
               onChange={(e) =>
                 updateFilter("real_estate_type", e.target.checked ? t : "")
               }
@@ -98,17 +90,13 @@ export default function FiltersSidebar() {
 
       {/* Τύπος Αγγελίας */}
       <div>
-        <span className="block text-sm font-medium text-gray-700 mb-2">
-          Τύπος Αγγελίας
-        </span>
+        <span className="block text-sm font-medium text-gray-700 mb-2">Τύπος Αγγελίας</span>
         {["Πώληση", "Ενοικίαση"].map((t) => (
           <label key={t} className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              checked={safeFilters.ad_type === t}
-              onChange={(e) =>
-                updateFilter("ad_type", e.target.checked ? t : "")
-              }
+              checked={filters.ad_type === t}
+              onChange={(e) => updateFilter("ad_type", e.target.checked ? t : "")}
             />
             {t}
           </label>

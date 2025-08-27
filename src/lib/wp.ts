@@ -1,5 +1,8 @@
-const WP_API = "https://koutsourais.com/wp-json/realestate/v1/search";
-type MediaItem = {
+// src/lib/wp.ts
+
+const WP_SEARCH_API = "https://koutsourais.com/wp-json/realestate/v1/search";
+
+export type MediaItem = {
   id: number;
   url: string;
   alt: string;
@@ -7,8 +10,9 @@ type MediaItem = {
   height?: number;
 };
 
+// ===== Gallery από attachments ενός post =====
 export async function fetchPropertyMedia(postId: number): Promise<MediaItem[]> {
-  const url = `https://koutsourais.com/wp-json/wp/v2/media?parent=${postId}&per_page=100`;
+  const url = `https://koutsourais.com/wp-json/wp/v2/media?parent=${postId}&per_page=50&_fields=id,source_url,alt_text,media_details,title`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return [];
 
@@ -16,37 +20,73 @@ export async function fetchPropertyMedia(postId: number): Promise<MediaItem[]> {
   if (!Array.isArray(data)) return [];
 
   return data
-    .map((m: any) => ({
-      id: m.id,
-      url: m?.media_details?.sizes?.large?.source_url || m?.source_url,
-      alt: m?.alt_text || m?.title?.rendered || "",
-      width: m?.media_details?.sizes?.large?.width || m?.media_details?.width,
-      height: m?.media_details?.sizes?.large?.height || m?.media_details?.height,
-    }))
+    .map((m: any) => {
+      const large = m?.media_details?.sizes?.large;
+      return {
+        id: m.id,
+        url: large?.source_url || m?.source_url,
+        alt: m?.alt_text || m?.title?.rendered || "",
+        width: large?.width || m?.media_details?.width,
+        height: large?.height || m?.media_details?.height,
+      } as MediaItem;
+    })
     .filter((x: MediaItem) => !!x.url);
 }
 
-export async function fetchFromWP(params: Record<string, any>) {
-  const sp = new URLSearchParams();
-  [
-    "region","ad_type","real_estate_type",
-    "minPrice","maxPrice","minArea","maxArea",
-    "orderby","order","sort",
-    "page","per_page","search",
-  ].forEach((k) => {
-    const v = params[k];
-    if (v !== undefined && v !== null && String(v) !== "") sp.set(k, String(v));
-  });
+// ===== Λίστα ακινήτων με pagination/filters/sort =====
+type FetchParams = Record<string, string | undefined>;
 
-  const res = await fetch(`${WP_API}?${sp.toString()}`, { cache: "no-store" });
-  const items = await res.json();
+export async function fetchFromWP(params: FetchParams) {
+  const sp = new URLSearchParams();
+
+  // --- canonical sort από το plugin ---
+  // Δεκτά: price-asc | price-desc | area-asc | area-desc | date-desc
+  if (params.sort) sp.set("sort", params.sort);
+
+  // --- φίλτρα ---
+  if (params.region) sp.set("region", params.region);
+  if (params.ad_type) sp.set("ad_type", params.ad_type); // μπορείς να περάσεις και comma-separated
+  if (params.real_estate_type) sp.set("real_estate_type", params.real_estate_type);
+  if (params.minPrice) sp.set("minPrice", params.minPrice);
+  if (params.maxPrice) sp.set("maxPrice", params.maxPrice);
+  if (params.minArea) sp.set("minArea", params.minArea);
+  if (params.maxArea) sp.set("maxArea", params.maxArea);
+  if (params.search) sp.set("search", params.search);
+
+  // --- pagination defaults ---
+  sp.set("page", params.page ? String(params.page) : "1");
+  sp.set("per_page", params.per_page ? String(params.per_page) : "9");
+
+  // --- Συμβατότητα με ΠΑΛΙΑ order/orderby (αν δεν ήρθε sort) ---
+  if (!params.sort) {
+    if (params.orderby) sp.set("orderby", params.orderby);
+    if (params.order) sp.set("order", params.order);
+  }
+
+  const url = `${WP_SEARCH_API}?${sp.toString()}`;
+  const res = await fetch(url, { cache: "no-store" });
+
+  if (!res.ok) {
+    // Μην σκάει το UI
+    return { items: [], total: 0, totalPages: 1 };
+  }
+
+  const data = await res.json();
   const total = Number(res.headers.get("X-WP-Total") || "0");
   const totalPages = Number(res.headers.get("X-WP-TotalPages") || "1");
-  return { items, total, totalPages };
+
+  return {
+    items: Array.isArray(data) ? data : [],
+    total,
+    totalPages,
+  };
 }
-// ---- fetch single by slug (ενημέρωση) ----
+
+// ===== Λεπτομέρεια ακινήτου με slug =====
 export async function fetchPropertyBySlug(slug: string) {
-  const url = `https://koutsourais.com/wp-json/wp/v2/real_estate?slug=${encodeURIComponent(slug)}&_embed=1`;
+  const url = `https://koutsourais.com/wp-json/wp/v2/real_estate?slug=${encodeURIComponent(
+    slug
+  )}&_embed=1`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return null;
 
@@ -55,32 +95,58 @@ export async function fetchPropertyBySlug(slug: string) {
 
   const item = arr[0];
 
-  const acfImageUrl = item?.acf?.image?.url || null;
+  // ACF κύρια εικόνα
+  const acfImageUrl: string | null = item?.acf?.image?.url || null;
+
+  // featured image (από _embed)
   let featuredUrl: string | null = null;
   try {
     const media = item?._embedded?.["wp:featuredmedia"]?.[0];
     featuredUrl = media?.source_url || null;
-  } catch {}
+  } catch {
+    /* noop */
+  }
 
-  // Φωτογραφίες που ανήκουν στο post (attachments)
+  // Συλλογή attachments (gallery)
   const attachments = await fetchPropertyMedia(item.id);
 
-  // Πρώτη θέση: ACF image ή featured (αν υπάρχουν)
+  // Επιλογή κύριας εικόνας
   const primary: MediaItem[] = [];
-  if (acfImageUrl) primary.push({ id: -1, url: acfImageUrl, alt: item?.acf?.image?.alt || "", width: 1600, height: 1200 });
-  else if (featuredUrl) primary.push({ id: -2, url: featuredUrl, alt: item?.title?.rendered || "", width: 1600, height: 1200 });
+  if (acfImageUrl) {
+    primary.push({
+      id: -1,
+      url: acfImageUrl,
+      alt: item?.acf?.image?.alt || item?.title?.rendered || "",
+      width: 1600,
+      height: 1200,
+    });
+  } else if (featuredUrl) {
+    primary.push({
+      id: -2,
+      url: featuredUrl,
+      alt: item?.title?.rendered || "",
+      width: 1600,
+      height: 1200,
+    });
+  }
 
-  // Αποφυγή διπλότυπου URL
-  const urls = new Set(primary.map(i => i.url));
-  const images = [...primary, ...attachments.filter(a => !urls.has(a.url))];
+  // Μην διπλοπεράσουμε ίδια URL
+  const seen = new Set(primary.map((x) => x.url));
+  const images = [...primary, ...attachments.filter((a) => !seen.has(a.url))];
+
+  // Αφαιρούμε <img> από το content (προαιρετικό – για να μην διπλοφαίνονται)
+  const contentHtml: string = item?.content?.rendered || "";
+  const contentHtmlNoImages = contentHtml.replace(/<img[^>]*>/gi, "");
 
   return {
     raw: item,
     id: item.id,
     slug: item.slug,
     title: item?.title?.rendered || "",
-    contentHtml: item?.content?.rendered || "",
+    contentHtml,           // πλήρες (αν το χρειαστείς)
+    contentHtmlNoImages,   // χωρίς <img>, για κάρτες/σελίδα λεπτομερειών
     acf: item?.acf || {},
-    images, // <<< επιστρέφουμε ΟΛΕΣ τις φωτό
+    imageUrl: images.length ? images[0].url : null, // κύρια
+    images,                // gallery
   };
 }

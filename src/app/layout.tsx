@@ -1,18 +1,19 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { FiltersProvider } from "@/context/FiltersContext"; // ⬅️ σημαντικό: provider για τα φίλτρα
+import Providers from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -23,26 +24,22 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="el">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}>
-        {/* HEADER: sticky πάνω */}
-        <header className="sticky top-0 z-50 bg-gray-900 text-white border-b border-black/10">
+      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-gray-50 text-gray-900`}>
+        {/* HEADER */}
+        <header className="sticky top-0 z-50 bg-brand text-white shadow">
           <nav className="container mx-auto flex justify-between items-center h-16 px-4">
-            <h1 className="text-xl font-bold tracking-tight">Real Estate</h1>
-            <ul className="flex space-x-6 text-sm">
-              <li><Link href="/" className="hover:opacity-80">Αρχική</Link></li>
-              <li><Link href="/" className="hover:opacity-80">Ακίνητα</Link></li>
-              <li><Link href="/contact" className="hover:opacity-80">Επικοινωνία</Link></li>
+            <h1 className="text-xl font-bold">Real Estate</h1>
+            <ul className="flex space-x-6">
+              <li><Link href="/" className="hover:underline">Αρχική</Link></li>
+              <li><Link href="/properties" className="hover:underline">Ακίνητα</Link></li>
+              <li><Link href="/contact" className="hover:underline">Επικοινωνία</Link></li>
             </ul>
           </nav>
         </header>
 
-        {/* Ο provider τυλίγει ΟΛΗ την εφαρμογή για να δουλεύουν useFilters(), setFilters, clearFilters */}
-        <FiltersProvider>
-          {/* container + μικρό padding επάνω/πλάι */}
-          <main className="container mx-auto px-4 py-4">
-            {children}
-          </main>
-        </FiltersProvider>
+        <Providers>
+          <main className="container mx-auto px-4 py-6">{children}</main>
+        </Providers>
       </body>
     </html>
   );

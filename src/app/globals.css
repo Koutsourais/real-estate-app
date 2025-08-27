@@ -1,91 +1,50 @@
-@import "tailwindcss";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* CSS variables για branding */
 :root {
-  /* Primary theme colors */
-  --color-primary: #1e3a8a; /* Βαθύ μπλε */
-  --color-primary-light: #3b82f6; /* Απαλό μπλε για hover */
-  --color-secondary: #f59e0b; /* Κίτρινο/πορτοκαλί για accents */
-  --color-bg: #f9fafb; /* Γενικό background (γκρι-λευκό) */
-  --color-card: #ffffff; /* Cards / sections */
-  --color-border: #e5e7eb; /* Borders */
-  --color-text: #111827; /* Σκούρο γκρι για κείμενο */
-  --color-text-muted: #6b7280; /* Δευτερεύον κείμενο */
+  --color-brand: #2563EB;
+  --color-brand-dark: #1E40AF;
+  --color-brand-light: #60A5FA;
 
-  /* Fonts */
-  --font-sans: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-}
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-secondary: #0F172A;
+  --color-secondary-dark: #0B1221;
+  --color-secondary-light: #334155;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  @apply bg-gray-50 text-gray-900;
 }
 
-body {
-  font-family: var(--font-sans);
-  background-color: var(--color-bg);
-  color: var(--color-text);
-}
-
-/* ---- Base reset & defaults ---- */
-@layer base {
-  html, body {
-    @apply bg-gray-50 text-gray-900;
-  }
-  h1, h2, h3 {
-    @apply font-heading text-gray-900;
-  }
-  h1 { @apply text-3xl md:text-4xl font-semibold; }
-  h2 { @apply text-2xl md:text-3xl font-semibold; }
-  h3 { @apply text-xl md:text-2xl font-medium; }
-
-  a { @apply text-primary hover:opacity-90; }
-}
-
-/* ---- Reusable UI primitives ---- */
 @layer components {
-  .container-safe { @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8; }
-
   .ui-card {
-    @apply bg-white border border-gray-200 rounded-2xl shadow-card transition-shadow;
+    @apply bg-white border border-gray-200 rounded-2xl shadow-sm;
   }
-  .ui-card:hover { box-shadow: var(--tw-shadow-card-hover, 0 6px 20px rgba(0,0,0,.12)); }
-
-  .btn {
-    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition;
-  }
-  .btn-primary {
-    @apply bg-primary text-white;
-  }
-  .btn-primary:hover { @apply bg-primary-light; }
-
-  .btn-ghost {
-    @apply border border-gray-200 bg-white text-gray-900;
-  }
-  .btn-ghost:hover { @apply bg-gray-100; }
 
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none bg-white;
-  }
-  .input:focus {
-    @apply ring-4 ring-blue-100 border-blue-500;
+    @apply w-full rounded-md border-gray-300 focus:border-brand focus:ring-brand;
   }
 
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700;
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 font-medium transition;
   }
-  .badge-accent {
-    @apply bg-yellow-100 text-yellow-700;
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-dark;
   }
+  .btn-outline {
+    @apply btn border border-gray-300 bg-white hover:bg-gray-50;
+  }
+
+  .container-safe {
+    @apply container mx-auto;
+  }
+}
+
+/* line-clamp χωρίς plugin */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

@@ -1,3 +1,4 @@
+// src/app/providers.tsx
 "use client";
 
 import { FiltersProvider } from "@/context/FiltersContext";
