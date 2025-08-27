@@ -1,103 +1,195 @@
+// MAIN
+
 import Image from "next/image";
+import Link from "next/link";
+import { fetchFromWP } from "@/lib/wp";
+import TopBar from "@/components/TopBar";
+import FiltersSidebar from "@/components/FiltersSidebar";
 
-export default function Home() {
+type Search = {
+  region?: string;
+  ad_type?: string;
+  real_estate_type?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  minArea?: string;
+  maxArea?: string;
+  orderby?: string; // price | area | date
+  order?: string;   // ASC | DESC
+  page?: string;
+  per_page?: string;
+  view?: string;    // list | grid
+};
+
+function buildQS(params: Record<string, string | undefined>, overrides?: Record<string, string | undefined>) {
+  const sp = new URLSearchParams();
+  const merged = { ...params, ...(overrides || {}) };
+  Object.entries(merged).forEach(([k, v]) => {
+    if (v && v !== "") sp.set(k, v);
+  });
+  const qs = sp.toString();
+  return qs ? `?${qs}` : "";
+}
+
+// 🔧 helper: βγάζει <img> από HTML + καθαρίζει κενές παραγράφους
+function stripImagesFromHtml(html: string) {
+  if (!html) return "";
+  let out = html.replace(/<img[^>]*>/gi, "");
+  // καθάρισε <figure> με εικόνες (αν βάζει Gutenberg)
+  out = out.replace(/<figure[\s\S]*?<\/figure>/gi, "");
+  // καθάρισε άδειες παραγράφους
+  out = out.replace(/<p>\s*<\/p>/g, "");
+  return out;
+}
+
+export default async function HomePage({ searchParams }: { searchParams: Search }) {
+  const { items, total, totalPages } = await fetchFromWP(searchParams || {});
+  const currentPage = Number(searchParams.page || 1);
+
+  const viewMode = searchParams.view === "grid" ? "grid" : "list";
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="p-6">
+      {/* Top Bar */}
+      <TopBar />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Κάτω τμήμα: Sidebar + List */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Sidebar (αριστερά) */}
+        <div className="md:col-span-3">
+          <FiltersSidebar />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {/* Λίστα (δεξιά) */}
+        <div className="md:col-span-9">
+          {(items as any[]).length === 0 ? (
+            <p>Δεν βρέθηκαν ακίνητα με τα επιλεγμένα φίλτρα.</p>
+          ) : (
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                  : "grid gap-6 grid-cols-1"
+              }
+            >
+              {(items as any[]).map((property) => {
+                const acf = property?.acf ?? {};
+                const img = acf?.image ?? null;
+                const price =
+                  typeof acf.price !== "undefined" && acf.price !== ""
+                    ? Number(String(acf.price).replace(/[^\d.]/g, "")).toLocaleString("el-GR")
+                    : null;
+
+                // 🔸 κόψιμο εικόνων από το content για να μη βγαίνουν στις κάρτες
+                const cleanExcerpt = property.content?.rendered
+                  ? stripImagesFromHtml(property.content.rendered)
+                  : "";
+
+                return (
+                  <div
+                    key={property.id}
+                    className={`bg-white border rounded-2xl shadow-md hover:shadow-xl transition-shadow overflow-hidden 
+                      ${viewMode === "grid" ? "flex flex-col" : "flex flex-col md:flex-row"}
+                    `}
+                  >
+                    {/* Εικόνα από ACF μόνο (όχι από editor/attachments) */}
+                    {img?.url && (
+                      <div
+                        className={
+                          viewMode === "grid"
+                            ? "w-full h-48 overflow-hidden"
+                            : "w-full md:w-[200px] h-[200px] md:h-auto flex-shrink-0 overflow-hidden"
+                        }
+                      >
+                        <Image
+                          src={img.url}
+                          alt={img.alt || property.title?.rendered || "Ακίνητο"}
+                          width={400}
+                          height={300}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {/* Περιεχόμενο */}
+                    <div className="p-5 flex flex-col justify-between flex-1">
+                      <div>
+                        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                          <Link href={`/real-estate/${normalizedSlug(property.slug)}`} className="hover:text-blue-600 transition-colors">
+                            {property.title?.rendered || "Χωρίς τίτλο"}
+                          </Link>
+                        </h2>
+                        {price && <p className="text-2xl font-bold text-green-600 mb-2">{price} €</p>}
+                        <div className="text-sm text-gray-600 space-y-1">
+                          {acf.region && <p>📍 {acf.region}</p>}
+                          {acf.ad_type && <p>🏷️ {acf.ad_type}</p>}
+                          {acf.real_estate_type && <p>🏠 {acf.real_estate_type}</p>}
+                          {acf.area && <p>📐 {acf.area} m²</p>}
+                        </div>
+
+                        {/* περιγραφή ΧΩΡΙΣ εικόνες + line-clamp */}
+                        {cleanExcerpt && (
+                          <div
+                            className="prose prose-sm text-gray-700 mt-3 line-clamp-3"
+                            dangerouslySetInnerHTML={{ __html: cleanExcerpt }}
+                          />
+                        )}
+                      </div>
+                      <div className="mt-4">
+                        <Link
+                          href={`/real-estate/${normalizedSlug(property.slug)}`}
+                          className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Δείτε περισσότερα →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-8">
+              <Link
+                aria-disabled={currentPage <= 1}
+                className={`px-4 py-2 border rounded ${currentPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
+                href={buildQS(
+                  searchParams as Record<string, string | undefined>,
+                  { page: String(Math.max(1, currentPage - 1)) }
+                )}
+              >
+                ← Προηγούμενη
+              </Link>
+
+              <span className="text-sm text-gray-600">
+                Σελίδα {currentPage} από {totalPages} • {total.toLocaleString("el-GR")} ακίνητα
+              </span>
+
+              <Link
+                aria-disabled={currentPage >= totalPages}
+                className={`px-4 py-2 border rounded ${currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
+                href={buildQS(
+                  searchParams as Record<string, string | undefined>,
+                  { page: String(Math.min(totalPages, currentPage + 1)) }
+                )}
+              >
+                Επόμενη →
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
   );
+}
+
+function normalizedSlug(s: string) {
+  try {
+    return encodeURIComponent(decodeURIComponent(s));
+  } catch {
+    return encodeURIComponent(s);
+  }
 }
