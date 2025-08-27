@@ -1,26 +1,24 @@
 "use client";
+import { createContext, useContext, useState, ReactNode } from "react";
 
-import { createContext, useContext, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+type Filters = Record<string, string>;
 
 type FiltersContextType = {
-  resetFlag: number;            // αλλάζει σε κάθε reset
-  clearFilters: () => void;     // καλεί reset + καθάρισμα URL
+  filters: Filters;
+  setFilters: (f: Filters) => void;
+  clearFilters: () => void;
 };
 
-const FiltersContext = createContext<FiltersContextType | null>(null);
+const FiltersContext = createContext<FiltersContextType | undefined>(undefined);
 
-export function FiltersProvider({ children }: { children: React.ReactNode }) {
-  const [resetFlag, setResetFlag] = useState(0);
-  const router = useRouter();
+export function FiltersProvider({ children }: { children: ReactNode }) {
+  const [filters, setFiltersState] = useState<Filters>({});
 
-  const clearFilters = useCallback(() => {
-    setResetFlag((f) => f + 1);  // trigger reset στους consumers
-    router.push("/");            // καθάρισε και το URL
-  }, [router]);
+  const setFilters = (f: Filters) => setFiltersState(f);
+  const clearFilters = () => setFiltersState({});
 
   return (
-    <FiltersContext.Provider value={{ resetFlag, clearFilters }}>
+    <FiltersContext.Provider value={{ filters, setFilters, clearFilters }}>
       {children}
     </FiltersContext.Provider>
   );
@@ -28,6 +26,8 @@ export function FiltersProvider({ children }: { children: React.ReactNode }) {
 
 export function useFilters() {
   const ctx = useContext(FiltersContext);
-  if (!ctx) throw new Error("useFilters must be used inside FiltersProvider");
+  if (!ctx) {
+    throw new Error("useFilters must be used inside <FiltersProvider>");
+  }
   return ctx;
 }

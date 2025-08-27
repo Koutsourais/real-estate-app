@@ -1,8 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import Providers from "./providers"; 
+import { FiltersProvider } from "@/context/FiltersContext"; // ⬅️ σημαντικό: provider για τα φίλτρα
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,27 +20,29 @@ export const metadata: Metadata = {
   description: "Headless WordPress + Next.js",
 };
 
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="el">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}>
         {/* HEADER: sticky πάνω */}
         <header className="sticky top-0 z-50 bg-gray-900 text-white border-b border-black/10">
           <nav className="container mx-auto flex justify-between items-center h-16 px-4">
-            <h1 className="text-xl font-bold">Real Estate</h1>
-            <ul className="flex space-x-6">
-              <li><Link href="/">Αρχική</Link></li>
-              <li><Link href="/properties">Ακίνητα</Link></li>
-              <li><Link href="/contact">Επικοινωνία</Link></li>
+            <h1 className="text-xl font-bold tracking-tight">Real Estate</h1>
+            <ul className="flex space-x-6 text-sm">
+              <li><Link href="/" className="hover:opacity-80">Αρχική</Link></li>
+              <li><Link href="/" className="hover:opacity-80">Ακίνητα</Link></li>
+              <li><Link href="/contact" className="hover:opacity-80">Επικοινωνία</Link></li>
             </ul>
           </nav>
         </header>
 
-        {/* Προσοχή: padding-top για να μην κρύβεται το περιεχόμενο κάτω από το header */}
-         <Providers>
-          <main className="container mx-auto px-4 pt-4">{children}</main>
-        </Providers>
+        {/* Ο provider τυλίγει ΟΛΗ την εφαρμογή για να δουλεύουν useFilters(), setFilters, clearFilters */}
+        <FiltersProvider>
+          {/* container + μικρό padding επάνω/πλάι */}
+          <main className="container mx-auto px-4 py-4">
+            {children}
+          </main>
+        </FiltersProvider>
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-// MAIN
+// src/app/page.tsx
 
 import Image from "next/image";
 import Link from "next/link";
@@ -21,7 +21,10 @@ type Search = {
   view?: string;    // list | grid
 };
 
-function buildQS(params: Record<string, string | undefined>, overrides?: Record<string, string | undefined>) {
+function buildQS(
+  params: Record<string, string | undefined>,
+  overrides?: Record<string, string | undefined>
+) {
   const sp = new URLSearchParams();
   const merged = { ...params, ...(overrides || {}) };
   Object.entries(merged).forEach(([k, v]) => {
@@ -31,27 +34,62 @@ function buildQS(params: Record<string, string | undefined>, overrides?: Record<
   return qs ? `?${qs}` : "";
 }
 
-// 🔧 helper: βγάζει <img> από HTML + καθαρίζει κενές παραγράφους
-function stripImagesFromHtml(html: string) {
-  if (!html) return "";
-  let out = html.replace(/<img[^>]*>/gi, "");
-  // καθάρισε <figure> με εικόνες (αν βάζει Gutenberg)
-  out = out.replace(/<figure[\s\S]*?<\/figure>/gi, "");
-  // καθάρισε άδειες παραγράφους
-  out = out.replace(/<p>\s*<\/p>/g, "");
-  return out;
+function normalizedSlug(s: string) {
+  try {
+    return encodeURIComponent(decodeURIComponent(s));
+  } catch {
+    return encodeURIComponent(s);
+  }
+}
+
+// Ασφαλές απόσπασμα περιγραφής (χωρίς img)
+function excerptFrom(contentHtml?: string, fallback?: string) {
+  if (!contentHtml && !fallback) return "";
+  const raw = contentHtml || fallback || "";
+  // βγάζουμε εικόνες & scripts
+  const noImgs = raw.replace(/<img[^>]*>/gi, "").replace(/<script[\s\S]*?<\/script>/gi, "");
+  // αφαιρούμε tags & κόβουμε ~180 χαρακτήρες
+  const text = noImgs.replace(/<[^>]+>/g, "").trim();
+  return text.length > 180 ? text.slice(0, 180) + "…" : text;
 }
 
 export default async function HomePage({ searchParams }: { searchParams: Search }) {
+  // SSR fetch από WP
   const { items, total, totalPages } = await fetchFromWP(searchParams || {});
   const currentPage = Number(searchParams.page || 1);
 
+  // Ανάγνωση mode εμφάνισης
   const viewMode = searchParams.view === "grid" ? "grid" : "list";
 
   return (
-    <main className="p-6">
-      {/* Top Bar */}
+    <main className="p-6 container-safe">
+      {/* Top bar (αναζήτηση/ταξινόμηση/clear) */}
       <TopBar />
+
+      {/* Μικρή action-bar επάνω από τα αποτελέσματα: toggle list/grid + count */}
+      <div className="mt-4 mb-2 flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          Βρέθηκαν <span className="font-medium text-gray-900">{total}</span> ακίνητα
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-secondary-dark">Εμφάνιση:</span>
+          <Link
+            href={buildQS(searchParams as any, { view: "list", page: "1" })}
+            className={`btn ${viewMode === "list" ? "btn-primary" : "btn-ghost"}`}
+            aria-pressed={viewMode === "list"}
+          >
+            Λίστα
+          </Link>
+          <Link
+            href={buildQS(searchParams as any, { view: "grid", page: "1" })}
+            className={`btn ${viewMode === "grid" ? "btn-primary" : "btn-ghost"}`}
+            aria-pressed={viewMode === "grid"}
+          >
+            Grid
+          </Link>
+        </div>
+      </div>
 
       {/* Κάτω τμήμα: Sidebar + List */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -80,65 +118,71 @@ export default async function HomePage({ searchParams }: { searchParams: Search 
                     ? Number(String(acf.price).replace(/[^\d.]/g, "")).toLocaleString("el-GR")
                     : null;
 
-                // 🔸 κόψιμο εικόνων από το content για να μη βγαίνουν στις κάρτες
-                const cleanExcerpt = property.content?.rendered
-                  ? stripImagesFromHtml(property.content.rendered)
-                  : "";
+                const snippet = excerptFrom(property?.content?.rendered);
 
                 return (
                   <div
                     key={property.id}
-                    className={`bg-white border rounded-2xl shadow-md hover:shadow-xl transition-shadow overflow-hidden 
-                      ${viewMode === "grid" ? "flex flex-col" : "flex flex-col md:flex-row"}
-                    `}
+                    className={`ui-card overflow-hidden transition hover:shadow-lg ${
+                      viewMode === "grid" ? "flex flex-col" : "flex flex-col md:flex-row"
+                    }`}
                   >
-                    {/* Εικόνα από ACF μόνο (όχι από editor/attachments) */}
+                    {/* Εικόνα */}
                     {img?.url && (
                       <div
                         className={
                           viewMode === "grid"
                             ? "w-full h-48 overflow-hidden"
-                            : "w-full md:w-[200px] h-[200px] md:h-auto flex-shrink-0 overflow-hidden"
+                            : "w-full md:w-[220px] h-[180px] flex-shrink-0 overflow-hidden"
                         }
                       >
                         <Image
                           src={img.url}
                           alt={img.alt || property.title?.rendered || "Ακίνητο"}
-                          width={400}
-                          height={300}
+                          width={440}
+                          height={330}
                           className="w-full h-full object-cover"
                         />
                       </div>
                     )}
 
                     {/* Περιεχόμενο */}
-                    <div className="p-5 flex flex-col justify-between flex-1">
+                    <div className={`p-5 flex flex-col justify-between flex-1 ${viewMode === "grid" ? "text-center" : ""}`}>
                       <div>
-                        <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                          <Link href={`/real-estate/${normalizedSlug(property.slug)}`} className="hover:text-blue-600 transition-colors">
+                        <h2 className={`font-semibold text-secondary-dark mb-2 ${viewMode === "grid" ? "text-md" : "text-lg"}`}>
+                          <Link
+                            href={`/real-estate/${normalizedSlug(property.slug)}`}
+                            className="hover:text-primary transition-colors"
+                          >
                             {property.title?.rendered || "Χωρίς τίτλο"}
                           </Link>
                         </h2>
-                        {price && <p className="text-2xl font-bold text-green-600 mb-2">{price} €</p>}
-                        <div className="text-sm text-gray-600 space-y-1">
+
+                        {price && (
+                          <p className={`font-bold text-primary mb-2 ${viewMode === "grid" ? "text-lg" : "text-xl"}`}>
+                            {price} €
+                          </p>
+                        )}
+
+                        <div className={`text-sm text-gray-600 ${viewMode === "grid" ? "space-y-1" : "space-y-1"}`}>
                           {acf.region && <p>📍 {acf.region}</p>}
                           {acf.ad_type && <p>🏷️ {acf.ad_type}</p>}
                           {acf.real_estate_type && <p>🏠 {acf.real_estate_type}</p>}
                           {acf.area && <p>📐 {acf.area} m²</p>}
                         </div>
 
-                        {/* περιγραφή ΧΩΡΙΣ εικόνες + line-clamp */}
-                        {cleanExcerpt && (
-                          <div
-                            className="prose prose-sm text-gray-700 mt-3 line-clamp-3"
-                            dangerouslySetInnerHTML={{ __html: cleanExcerpt }}
-                          />
+                        {/* μικρό απόσπασμα χωρίς εικόνες */}
+                        {snippet && (
+                          <p className={`mt-3 text-sm text-gray-700 ${viewMode === "grid" ? "line-clamp-3" : "line-clamp-2"}`}>
+                            {snippet}
+                          </p>
                         )}
                       </div>
-                      <div className="mt-4">
+
+                      <div className={`mt-4 ${viewMode === "grid" ? "mx-auto" : ""}`}>
                         <Link
                           href={`/real-estate/${normalizedSlug(property.slug)}`}
-                          className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                          className="btn btn-primary"
                         >
                           Δείτε περισσότερα →
                         </Link>
@@ -150,16 +194,13 @@ export default async function HomePage({ searchParams }: { searchParams: Search 
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Pagination (κρατάει τα φίλτρα) */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-8">
               <Link
                 aria-disabled={currentPage <= 1}
-                className={`px-4 py-2 border rounded ${currentPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
-                href={buildQS(
-                  searchParams as Record<string, string | undefined>,
-                  { page: String(Math.max(1, currentPage - 1)) }
-                )}
+                className={`btn btn-ghost ${currentPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
+                href={buildQS(searchParams as any, { page: String(Math.max(1, currentPage - 1)) })}
               >
                 ← Προηγούμενη
               </Link>
@@ -170,11 +211,8 @@ export default async function HomePage({ searchParams }: { searchParams: Search 
 
               <Link
                 aria-disabled={currentPage >= totalPages}
-                className={`px-4 py-2 border rounded ${currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
-                href={buildQS(
-                  searchParams as Record<string, string | undefined>,
-                  { page: String(Math.min(totalPages, currentPage + 1)) }
-                )}
+                className={`btn btn-ghost ${currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
+                href={buildQS(searchParams as any, { page: String(Math.min(totalPages, currentPage + 1)) })}
               >
                 Επόμενη →
               </Link>
@@ -184,12 +222,4 @@ export default async function HomePage({ searchParams }: { searchParams: Search 
       </div>
     </main>
   );
-}
-
-function normalizedSlug(s: string) {
-  try {
-    return encodeURIComponent(decodeURIComponent(s));
-  } catch {
-    return encodeURIComponent(s);
-  }
 }
