@@ -1,11 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // Βάλε εδώ τα domains από τα οποία φορτώνεις εικόνες
-    // (WP media host σου κ.λπ.)
     domains: ["koutsourais.com"],
   },
   reactStrictMode: true,
+
+  async redirects() {
+    if (process.env.UNDER_CONSTRUCTION === "true") {
+      return [
+        {
+          source: "/((?!under-construction).*)", // όλα εκτός της UC σελίδας
+          destination: "/under-construction",
+          permanent: false,
+        },
+      ];
+    }
+    return [];
+  },
 };
 
 module.exports = nextConfig;
