@@ -10,6 +10,16 @@ export type MediaItem = {
   height?: number;
 };
 
+// --- helper: χαρτογράφηση ad_type ώστε να δέχεται είτε ελληνικά είτε slugs ---
+function normalizeAdType(input?: string): string | undefined {
+  if (!input) return undefined;
+  const v = String(input).trim().toLowerCase();
+  if (v === "sale" || v === "πωληση" || v === "πώληση") return "Πώληση";
+  if (v === "rent" || v === "ενοικιαση" || v === "ενοικίαση") return "Ενοικίαση";
+  // διαφορετικά, στείλε ό,τι πήρες (αν ήδη είναι σωστή ελληνική τιμή)
+  return input;
+}
+
 // ===== Gallery από attachments ενός post =====
 export async function fetchPropertyMedia(postId: number): Promise<MediaItem[]> {
   const url = `https://koutsourais.com/wp-json/wp/v2/media?parent=${postId}&per_page=50&_fields=id,source_url,alt_text,media_details,title`;
@@ -45,7 +55,11 @@ export async function fetchFromWP(params: FetchParams) {
 
   // --- φίλτρα ---
   if (params.region) sp.set("region", params.region);
-  if (params.ad_type) sp.set("ad_type", params.ad_type); // μπορείς να περάσεις και comma-separated
+
+  // ad_type: δέξου Πώληση/Ενοικίαση ή sale/rent και στείλε την σωστή τιμή στο WP
+  const adType = normalizeAdType(params.ad_type);
+  if (adType) sp.set("ad_type", adType);
+
   if (params.real_estate_type) sp.set("real_estate_type", params.real_estate_type);
   if (params.minPrice) sp.set("minPrice", params.minPrice);
   if (params.maxPrice) sp.set("maxPrice", params.maxPrice);
@@ -53,9 +67,9 @@ export async function fetchFromWP(params: FetchParams) {
   if (params.maxArea) sp.set("maxArea", params.maxArea);
   if (params.search) sp.set("search", params.search);
 
-  // --- pagination defaults ---
+  // --- pagination defaults (ευθυγραμμισμένα με plugin: default 12) ---
   sp.set("page", params.page ? String(params.page) : "1");
-  sp.set("per_page", params.per_page ? String(params.per_page) : "9");
+  sp.set("per_page", params.per_page ? String(params.per_page) : "12");
 
   // --- Συμβατότητα με ΠΑΛΙΑ order/orderby (αν δεν ήρθε sort) ---
   if (!params.sort) {
@@ -134,7 +148,7 @@ export async function fetchPropertyBySlug(slug: string) {
   const seen = new Set(primary.map((x) => x.url));
   const images = [...primary, ...attachments.filter((a) => !seen.has(a.url))];
 
-  // Αφαιρούμε <img> από το content (προαιρετικό – για να μην διπλοφαίνονται)
+  // Αφαιρούμε <img> από το content (προαιρετικό)
   const contentHtml: string = item?.content?.rendered || "";
   const contentHtmlNoImages = contentHtml.replace(/<img[^>]*>/gi, "");
 
@@ -143,8 +157,8 @@ export async function fetchPropertyBySlug(slug: string) {
     id: item.id,
     slug: item.slug,
     title: item?.title?.rendered || "",
-    contentHtml,           // πλήρες (αν το χρειαστείς)
-    contentHtmlNoImages,   // χωρίς <img>, για κάρτες/σελίδα λεπτομερειών
+    contentHtml,           // πλήρες
+    contentHtmlNoImages,   // χωρίς <img>
     acf: item?.acf || {},
     imageUrl: images.length ? images[0].url : null, // κύρια
     images,                // gallery

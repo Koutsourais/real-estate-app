@@ -33,8 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ul className="flex space-x-6">
               <li><Link href="/" className="hover:underline">Αρχική</Link></li>
               <li><Link href="/sales" className="hover:underline">Πωλήσεις Ακινήτων</Link></li>
+              <li><Link href="/rentals" className="hover:underline">Ενοικιάσεις Ακινήτων</Link></li>
               <li><Link href="/contact" className="hover:underline">Επικοινωνία</Link></li>
             </ul>
+
           </nav>
         </header>
 

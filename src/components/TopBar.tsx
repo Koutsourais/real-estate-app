@@ -1,7 +1,7 @@
 // src/components/TopBar.tsx
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
@@ -16,9 +16,18 @@ type SuggestItem = {
   };
 };
 
+function debounce<T extends (...args: any[]) => void>(fn: T, ms = 350) {
+  let t: any;
+  return (...args: Parameters<T>) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
 export default function TopBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // ---- Local UI state
   const [region, setRegion] = useState("");
@@ -44,6 +53,15 @@ export default function TopBar() {
     setView(urlView);
   }, [searchParams]);
 
+  // ---- Helper: push preserving current route (/, /sales, /rentals, …)
+  const pushWithParams = useCallback(
+    (params: URLSearchParams) => {
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [router, pathname]
+  );
+
   // ---- Helper: set a single query param (and reset page)
   const setParam = useCallback(
     (name: string, value?: string | null) => {
@@ -56,29 +74,20 @@ export default function TopBar() {
         params.delete("orderby");
       }
       params.delete("page");
-      router.push(`/?${params.toString()}`);
+      pushWithParams(params);
     },
-    [router, searchParams]
+    [searchParams, pushWithParams]
   );
 
-  // ---- Clear all
+  // ---- Clear all (μένεις στο ίδιο route)
   const handleClear = () => {
     setRegion("");
     setSort("date-desc");
     setView("list");
     setSuggestions([]);
     setOpen(false);
-    router.push("/"); // καθαρό URL
+    router.push(pathname); // καθαρό URL στο ίδιο route
   };
-
-  // ---- Debounce util
-  function debounce<T extends (...args: any[]) => void>(fn: T, ms = 350) {
-    let t: any;
-    return (...args: Parameters<T>) => {
-      clearTimeout(t);
-      t = setTimeout(() => fn(...args), ms);
-    };
-  }
 
   // ---- Live suggestions for region
   const fetchSuggestions = useMemo(
@@ -112,7 +121,7 @@ export default function TopBar() {
     setOpen(!!region && region.trim().length >= 2);
   }, [region, fetchSuggestions]);
 
-  // close dropdown when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (
@@ -124,8 +133,15 @@ export default function TopBar() {
         setOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   return (
@@ -155,10 +171,15 @@ export default function TopBar() {
           onFocus={() => {
             if (region && region.trim().length >= 2) setOpen(true);
           }}
+          aria-expanded={open}
+          aria-controls="region-suggestions"
+          aria-autocomplete="list"
+          role="combobox"
         />
 
         {open && (
           <div
+            id="region-suggestions"
             ref={dropdownRef}
             className="absolute left-0 right-0 mt-2 bg-white border rounded-lg shadow-lg max-h-96 overflow-auto"
           >
@@ -177,9 +198,7 @@ export default function TopBar() {
                 const reg = it?.acf?.region || "";
                 const price =
                   it?.acf?.price !== undefined && it?.acf?.price !== ""
-                    ? Number(
-                        String(it.acf!.price).replace(/[^\d.]/g, "")
-                      ).toLocaleString("el-GR")
+                    ? Number(String(it.acf!.price).replace(/[^\d.]/g, "")).toLocaleString("el-GR")
                     : null;
 
                 return (
@@ -245,7 +264,9 @@ export default function TopBar() {
       </div>
 
       {/* Ταξινόμηση (συμβατό με plugin: ?sort=...) */}
+      <label className="sr-only" htmlFor="sort-select">Ταξινόμηση</label>
       <select
+        id="sort-select"
         className="select text-sm"
         value={sort}
         onChange={(e) => {
