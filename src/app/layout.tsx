@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <h1 className="text-xl font-bold">Real Estate</h1>
             <ul className="flex space-x-6">
               <li><Link href="/" className="hover:underline">Αρχική</Link></li>
-              <li><Link href="/properties" className="hover:underline">Ακίνητα</Link></li>
+              <li><Link href="/sales" className="hover:underline">Πωλήσεις Ακινήτων</Link></li>
               <li><Link href="/contact" className="hover:underline">Επικοινωνία</Link></li>
             </ul>
           </nav>
