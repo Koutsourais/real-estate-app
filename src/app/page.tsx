@@ -54,7 +54,7 @@ export default async function HomePage({ searchParams }: { searchParams: Search 
 
       {/* Layout με sidebar + λίστα */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
-        {/* Sidebar */}
+        {/* Sidebar φίλτρων */}
         <div className="md:col-span-3">
           <FiltersSidebar />
         </div>
@@ -205,10 +205,17 @@ export default async function HomePage({ searchParams }: { searchParams: Search 
               )}
             </div>
 
-            {/* Χάρτης: δίνουμε ΟΛΑ τα items και αφήνουμε το MapView να βάλει pins μόνο όπου έχει coordinates */}
-            <div className="lg:col-span-1">
-              <MapView items={items as any[]} />
-            </div>
+            {/* Χάρτης (sticky στο scroll) */}
+            <aside className="lg:col-span-1">
+              {/* Ρύθμισε το top ανάλογα με το ύψος του header σου */}
+              <div className="lg:sticky lg:top-24">
+                {/* Δίνουμε μεγαλύτερο ύψος στο container για πιο γεμάτο sidebar */}
+                <div className="h-[50vh] lg:h-[calc(100vh-12rem)] rounded-xl overflow-hidden border">
+                  {/* Το MapView μένει όπως είναι — αν αργότερα θες πλήρες ύψος, μπορούμε να του περάσουμε height prop */}
+                  <MapView items={items as any[]} />
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
