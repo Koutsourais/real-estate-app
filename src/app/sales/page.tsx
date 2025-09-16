@@ -1,7 +1,7 @@
 import TopBar from "@/components/TopBar";
 import ListingsPageShell from "@/components/ListingsPageShell";
 
-export const metadata = { title: "Πωλήσεις Ακινήτων" };
+export const metadata = { title: "Αγορά Ακινήτου" };
 
 export default function SalesPage({ searchParams }: { searchParams: any }) {
   return (
@@ -9,7 +9,7 @@ export default function SalesPage({ searchParams }: { searchParams: any }) {
       <TopBar /> {/* εμφανίζεται κάτω από το header του layout */}
       <ListingsPageShell
         searchParams={searchParams}
-        title="Πωλήσεις Ακινήτων"
+        title="Αγορά Ακινήτου"
         fixedAdType="Πώληση"
       />
     </>

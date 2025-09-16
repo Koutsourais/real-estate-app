@@ -1,7 +1,7 @@
 import TopBar from "@/components/TopBar";
 import ListingsPageShell from "@/components/ListingsPageShell";
 
-export const metadata = { title: "Ενοικιάσεις Ακινήτων" };
+export const metadata = { title: "Ενοικίαση Ακινήτου" };
 
 export default function RentalsPage({ searchParams }: { searchParams: any }) {
   return (
@@ -9,7 +9,7 @@ export default function RentalsPage({ searchParams }: { searchParams: any }) {
       <TopBar />
       <ListingsPageShell
         searchParams={searchParams}
-        title="Ενοικιάσεις Ακινήτων"
+        title="Ενοικίαση Ακινήτου"
         fixedAdType="Ενοικίαση"
       />
     </>

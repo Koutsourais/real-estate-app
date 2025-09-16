@@ -1,14 +1,22 @@
 // src/app/page.tsx
 
+import HomeHero from "@/components/home/HomeHero";
+import HomeStats from "@/components/home/HomeStats";
+import HomeServices from "@/components/HomeServices"; // το είχαμε ήδη
+import HomeProcess from "@/components/home/HomeProcess";
+import HomeFeatured from "@/components/home/HomeFeatured";
+import HomeCTA from "@/components/home/HomeCTA";
+
 
 export default function Home() {
   return (
-    <main className="p-6 container-safe">
-      
-      <section className="py-16 text-center">
-        <h1 className="text-3xl font-semibold mb-2">Hello world</h1>
-        <p className="text-gray-600">Περιεχόμενο coming soon…</p>
-      </section>
+    <main>
+      <HomeHero />
+      <HomeStats />
+      <HomeServices />
+      <HomeProcess />
+      <HomeFeatured />
+      <HomeCTA />
     </main>
   );
 }
