@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Footer from "@/components/Footer";
+import { Suspense } from "react";
 import HeaderNav from "@/components/HeaderNav"; // 👈 header με language dropdown
 
 const inter = Inter({
@@ -29,7 +30,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-gray-50 text-gray-900`}>
         {/* HEADER */}
         <header className="sticky top-0 z-50 bg-brand text-white shadow">
-          <HeaderNav />
+          <Suspense fallback={null}>
+            <HeaderNav />
+          </Suspense>
         </header>
 
         <Providers>
