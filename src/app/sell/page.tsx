@@ -1,6 +1,6 @@
 // src/app/sell/page.tsx
 export const dynamic = "force-dynamic";
-import SellStartForm from "./SellStartForm";
+//import SellStartForm from "./SellStartForm";
 
 export const metadata = {
   title: "Πώληση Ακινήτου — Ξεκίνα | Properland",
@@ -72,7 +72,7 @@ export default function SellPage() {
       {/* Φόρμα εκδήλωσης ενδιαφέροντος */}
       <section className="my-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <SellStartForm />
+          
         </div>
         <aside className="space-y-3">
           <div className="bg-white border rounded-2xl p-4">
