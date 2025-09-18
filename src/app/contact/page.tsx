@@ -1,4 +1,5 @@
 // src/app/contact/page.tsx
+export const dynamic = "force-dynamic";
 import ContactForm from "./ContactForm";
 
 export const metadata = {

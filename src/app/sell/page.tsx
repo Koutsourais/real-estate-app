@@ -1,4 +1,5 @@
 // src/app/sell/page.tsx
+export const dynamic = "force-dynamic";
 import SellStartForm from "./SellStartForm";
 
 export const metadata = {

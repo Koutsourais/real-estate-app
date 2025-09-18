@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import TopBar from "@/components/TopBar";
 import ListingsPageShell from "@/components/ListingsPageShell";
 
