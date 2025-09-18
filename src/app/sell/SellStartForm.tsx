@@ -143,8 +143,8 @@ export default function SellStartForm() {
           <textarea className="input w-full min-h-[120px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Χρήσιμες πληροφορίες για την πώληση" />
         </div>
 
-        {/* reCAPTCHA checkbox */}
-        <div className="g-recaptcha" data-sitekey={siteKey} />
+        {/* reCAPTCHA checkbox
+        <div className="g-recaptcha" data-sitekey={siteKey} /> */}
 
         <div className="flex items-center gap-3">
           <button
