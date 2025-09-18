@@ -2,14 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Script from "next/script";
-
-declare global {
-  interface Window { grecaptcha: any }
-}
 
 export default function SellStartForm() {
-  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!;
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<null | "ok" | "error">(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +37,6 @@ export default function SellStartForm() {
       return;
     }
 
-    const token = window.grecaptcha?.getResponse();
-    if (!token) {
-      setError("Παρακαλώ επιβεβαιώστε το reCAPTCHA.");
-      return;
-    }
-
     setSubmitting(true);
     try {
       const payload = {
@@ -61,7 +49,6 @@ export default function SellStartForm() {
           `Τύπος: ${type}\n` +
           `Εμβαδόν: ${area} m²\n` +
           (notes ? `Σημειώσεις: ${notes}\n` : ""),
-        token,
       };
 
       const res = await fetch("/api/contact", {
@@ -75,7 +62,6 @@ export default function SellStartForm() {
       setStatus("ok");
       setOwnerName(""); setEmail(""); setPhone(""); setAddress("");
       setType(""); setArea(""); setNotes("");
-      window.grecaptcha?.reset();
     } catch (err: any) {
       setStatus("error");
       setError(err?.message || "Αποτυχία αποστολής.");
@@ -86,7 +72,6 @@ export default function SellStartForm() {
 
   return (
     <div className="bg-white border rounded-2xl p-6">
-      <Script src="https://www.google.com/recaptcha/api.js" async defer />
       <h2 className="text-xl font-semibold mb-4">Ξεκίνα την πώληση</h2>
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
         {/* Honeypot */}
@@ -142,9 +127,6 @@ export default function SellStartForm() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Σημειώσεις (προαιρετικό)</label>
           <textarea className="input w-full min-h-[120px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Χρήσιμες πληροφορίες για την πώληση" />
         </div>
-
-        {/* reCAPTCHA checkbox
-        <div className="g-recaptcha" data-sitekey={siteKey} /> */}
 
         <div className="flex items-center gap-3">
           <button
